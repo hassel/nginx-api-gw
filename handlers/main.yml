@@ -1,0 +1,40 @@
+---
+- name: reload nginx
+  service: name=nginx state=reloaded
+  tags:
+    - nginx
+    - nginx-backend
+    - nginx-monitor
+    - nginx-frontend
+    - nginx-config
+    - reload
+
+- name: restart nginx
+  service: name=nginx state=restarted
+  tags:
+    - nginx
+    - nginx-backend
+    - nginx-monitor
+    - nginx-frontend
+    - nginx-config
+    - restart
+
+- name: reload lxd nginx
+  service: name=nginx state=reloaded
+  tags:
+    - nginx
+    - nginx-backend
+    - nginx-monitor
+    - nginx-frontend
+    - nginx-config
+    - reload
+
+- name: restart lxd nginx
+  service: name=nginx state=restarted
+  tags:
+    - nginx
+    - nginx-backend
+    - nginx-monitor
+    - nginx-frontend
+    - nginx-config
+    - restart

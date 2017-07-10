@@ -1,0 +1,5 @@
+{% for key, value in vips.iteritems() %}
+{% for listen_address in value.listen %}
+{{ listen_address | regex_replace('^(?P<host>\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}):(?P<port>\\d+)$', '\\g<host>') }}/32
+{% endfor %}
+{% endfor %}

@@ -1,0 +1,212 @@
+---
+- name: install
+  apt: name=nginx-plus={{ nginx_version }}~{{ ansible_distribution_release }}  state=present update_cache=yes allow_unauthenticated=yes
+  tags:
+    - nginx
+    - nginx-install
+  ignore_errors: true
+
+- name: put nginx systemd config in place
+  copy: src=nginx.service dest=/etc/systemd/system/nginx.service
+  when: ansible_distribution_release == 'xenial'
+  tags:
+    - systemd
+    - nginx
+    - nginx-install
+
+- name: remove init.d scripts for xenial
+  file: dest=/etc/init.d/nginx state=absent
+  when: ansible_distribution_release == 'xenial'
+  tags:
+    - systemd
+    - nginx
+    - nginx-install
+
+- name: remove default config
+  file: dest={{ nginx_conf_d }}/{{ item }} state=absent
+  with_items: '{{ default_files }}'
+  tags:
+    - nginx
+    - nginx-install
+  register: default_conf
+
+- name: create loopback addr list
+  template: src=nginx_vips.cfg.j2 dest=/opt/nginx_vips.cfg mode=0644
+  register: addr
+  tags:
+    - nginx
+    - nginx-frontend
+    - vip-wrapper
+
+- name: create loopback addr script
+  copy: src=nginx_vip_setup dest=/usr/sbin/ mode=0755
+  tags:
+    - nginx
+    - vip-wrapper
+
+- name: push dhparam 4096 bits
+  copy: src=dhparams.pem dest={{ nginx_base }}/dhparams.pem
+  tags:
+    - dhparams
+    - nginx
+
+- name: push dhparam 1024 bits
+  copy: src=dhparams1024.pem dest={{ nginx_base }}/dhparams1024.pem
+  tags:
+    - dhparams
+    - nginx
+
+- name: push header files for includes
+  copy: src={{ item }} dest={{ nginx_conf_d }}/{{ item }}
+  with_items: '{{ header_files }}'
+  tags:
+    - nginx
+    - nginx-headers
+
+- name: generate nginx backend config
+  template: src=upstream.sfarm.j2 dest={{ nginx_conf_d }}/{{ item.key }}.{{ upstreams[item.key].prefix|default('sfarm') }}
+  with_dict: '{{ upstreams }}'
+  register: nginx_upstream
+  tags:
+    - nginx
+    - nginx-backend
+    - nginx-config
+
+- name: generate nginx VIP config
+  template: src=vip.conf.j2 dest={{ nginx_conf_d }}/{{ item.key }}.{{ vips[item.key].prefix|default('conf') }}
+  with_dict: '{{ vips }}'
+  register: nginx_frontend
+  tags:
+    - nginx
+    - nginx-frontend
+    - nginx-config
+
+- name: generate nginx VIP rate-limiting configuration
+  template: src=rate.limit.j2 dest={{ nginx_conf_d }}/{{ item.key }}.limit
+  with_dict: '{{ vips }}'
+  register: nginx_limit
+  tags:
+    - nginx
+    - nginx-frontend
+    - nginx-config
+
+- name: generate monitoring config
+  template: src=monitoring.j2 dest={{ nginx_conf_d }}/{{ item.key }}.mon
+  with_dict: '{{ probes }}'
+  when: probes is defined
+  tags:
+    - nginx
+    - nginx-monitor
+    - nginx-config
+
+- name: generate nginx core config
+  template: src=nginx.conf.j2 dest={{ nginx_base }}/nginx.conf
+  register: nginx_core
+  tags:
+    - nginx
+    - nginx-config
+    - nginx-core
+
+- name: check config syntax
+  command: /usr/sbin/nginx -c {{ nginx_base }}/nginx.conf -t
+  register: nginx_config_check
+  failed_when: nginx_config_check.rc != 0
+  tags:
+    - nginx
+    - nginx-core
+    - nginx-backend
+    - nginx-monitor
+    - nginx-frontend
+    - nginx-config
+  ignore_errors: true
+
+- name: run loopback addr script
+  command: /usr/sbin/nginx_vip_setup sync
+  when: addr is defined
+  tags:
+    - nginx
+    - nginx-core
+    - nginx-backend
+    - nginx-monitor
+    - nginx-frontend
+    - nginx-config
+  ignore_errors: true
+
+- name: reconfigure and notify reload
+  command: /usr/sbin/nginx -c {{ nginx_base }}/nginx.conf -t
+  register: nginx_config_apply
+  failed_when: nginx_config_apply.rc != 0
+  notify: reload nginx
+  when: nginx_config_check|success
+  tags:
+    - nginx
+    - nginx-core
+    - nginx-backend
+    - nginx-monitor
+    - nginx-frontend
+    - nginx-config
+  ignore_errors: true
+
+- name: ensure nginx is running
+  service: name=nginx state=started enabled=yes
+  tags:
+    - nginx
+    - nginx-core
+    - nginx-backend
+    - nginx-monitor
+    - nginx-frontend
+    - nginx-config
+
+- name: update motd
+  template: src=motd.j2 dest=/etc/motd.tail
+  when: nginx_config_apply|success
+  tags:
+    - nginx
+    - nginx-backend
+    - nginx-monitor
+    - nginx-frontend
+    - nginx-config
+    - motd
+
+- name: push dyn motd
+  copy: src=100-nginx dest=/etc/update-motd.d/100-nginx mode=740
+  tags:
+    - nginx
+    - nginx-core
+    - nginx-backend
+    - nginx-monitor
+    - nginx-frontend
+    - nginx-config
+    - motd
+
+- hipchat: 
+    token='{{ hipchat_token }}'
+    room='{{ hipchat_room }}'
+    api='{{ hipchat_api }}' from="nginx-{{ site }}" 
+    msg="Deploy successful on {{ ansible_nodename }}"
+    validate_certs=no color=green
+  when: nginx_config_check|success
+  ignore_errors: true
+  tags:
+    - nginx
+    - nginx-core
+    - nginx-backend
+    - nginx-monitor
+    - nginx-frontend
+    - nginx-config
+
+- hipchat: 
+    token='{{ hipchat_token }}'
+    room='{{ hipchat_room }}'
+    api='{{ hipchat_api }}' from="nginx-{{ site }}" 
+    msg="Deploy unsuccessful on {{ ansible_nodename }} {{ nginx_config_check.stderr }}"
+    validate_certs=no color=red
+  when: nginx_config_check|failed
+  ignore_errors: true
+  tags:
+    - nginx
+    - nginx-core
+    - nginx-backend
+    - nginx-monitor
+    - nginx-frontend
+    - nginx-config

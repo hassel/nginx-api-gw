@@ -1,0 +1,15 @@
+[Unit]
+Description=nginx
+After=network.target auditd.service
+
+[Service]
+EnvironmentFile=-/etc/default/nginx
+ExecStart=/usr/sbin/nginx -c /etc/nginx/nginx.conf
+ExecReload=/bin/kill -HUP $MAINPID
+KillMode=process
+Restart=always
+RestartSec = 60
+Type=forking
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,145 @@
+user  nginx;
+worker_processes  auto;
+master_process on;
+worker_rlimit_nofile 200000;
+worker_rlimit_core 500M;
+
+error_log  /var/log/nginx/error.log warn;
+error_log syslog:server={{ syslog_server }},tag=nginx_{{ site }} warn;
+pid        /var/run/nginx.pid;
+
+
+events {
+  worker_connections  16384;
+  multi_accept on;
+  use epoll;
+  accept_mutex off;
+}
+
+
+http {
+  proxy_redirect              off;
+  server_tokens off;
+  types_hash_max_size 8192;
+
+  ## Insert Headers
+  proxy_set_header Host               $http_host;
+  proxy_set_header X-Real-IP          $remote_addr;
+  proxy_set_header X-Forwarded-For    $proxy_add_x_forwarded_for;
+  proxy_set_header X-Forwarded-Proto  $scheme;
+  proxy_set_header                    Connection "";
+  proxy_http_version 1.1;
+
+
+  ## General normalization/protection
+  client_body_buffer_size       32k;
+  client_max_body_size          2m;
+  client_header_buffer_size     1k;
+  large_client_header_buffers   8 16k;
+
+  proxy_buffer_size             32k;
+  proxy_buffers                 256 8k;
+  proxy_busy_buffers_size       64k;
+  proxy_read_timeout            20s;
+  proxy_send_timeout            10s;
+  proxy_connect_timeout         10s;
+
+
+  server_names_hash_max_size    4096;
+  proxy_headers_hash_max_size   4096;
+  proxy_headers_hash_bucket_size 265;
+
+
+  http2_max_concurrent_streams  64;
+  http2_idle_timeout            1m;
+  reset_timedout_connection on;
+
+  ssl_session_cache shared:SSL:2048m;
+  ssl_session_timeout 20h;
+  ssl_session_tickets off;
+
+  sendfile on;
+  tcp_nopush on;
+  keepalive_timeout 15;
+  keepalive_requests 500;
+
+  # Logging
+  access_log off;
+  log_format perflog '$remote_addr - $remote_user [$time_local] "$request" $status $body_bytes_sent "$http_referer" '
+  '"$http_user_agent" "$http_x_forwarded_for" "$ssl_cipher" "$ssl_protocol" "$ssl_session_reused" "$ssl_server_name" '
+  '"$upstream_addr" "$upstream_status" "$upstream_connect_time" "$upstream_response_length" "$upstream_response_time" '
+  '"$request_id" "$tcpinfo_rtt, $tcpinfo_rttvar, $tcpinfo_snd_cwnd, $tcpinfo_rcv_space"';
+  # Maps
+
+  # Set to true if first to last byte is longer then 500 ms 
+  map $request_time $dolog {
+    default 0;
+    ~*0\.[5-9]|[1-9]\. 1;
+  }
+
+  # Set to true if response code is matched
+  map $status $dolog {
+    default 0;
+    ~*5\d\d|204|406|408|504 1;
+  }
+
+  # Set to true if client-cert was not valid
+  #map $ssl_client_verify $dolog {
+  #  default 0;
+  #  ~*^FALIED 1;
+  #}
+
+  # Map for upgrading to ws/wss
+  map $http_upgrade $connection_upgrade {
+    default upgrade;
+    ''      close;
+  }
+
+  # Set http status for exceeded rates
+  limit_req_status 429;
+
+  # http-Includes
+  include {{ nginx_conf_d }}/*.mon;
+  include {{ nginx_conf_d }}/*.sfarm;
+  include {{ nginx_conf_d }}/*.limit;
+  include {{ nginx_conf_d }}/*.conf;
+
+
+  server {
+{% if monitor_addr is defined %}
+{% for addr in monitor_addr %}
+    listen {{ addr }}:80;
+{% endfor %}
+{% endif %}
+    listen 127.0.0.1:80;
+
+    location /upstream_conf {
+      upstream_conf;
+      allow 127.0.0.1;
+{% for addr in api_acl %}
+      allow {{ addr }};
+{% endfor %}
+      deny all;
+    }
+
+    location /status {
+        status;
+        allow 127.0.0.1;
+{% for addr in monitor_acl %}
+        allow {{ addr }};
+{% endfor %}
+        deny all;
+    }
+
+    location = /status.html {
+      root /usr/share/nginx/html;
+    }
+  }
+}
+
+stream {
+  # stream-Includes
+  include /etc/nginx/conf.d/*.stream;
+  include /etc/nginx/conf.d/*.tcp;
+  include /etc/nginx/conf.d/*.udp;
+}

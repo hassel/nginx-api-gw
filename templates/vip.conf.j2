@@ -1,0 +1,220 @@
+server {
+{% for protocol in vips[item.key].proto %}
+{% if (protocol == "https" or protocol == "wss") %}
+{% for addr in vips[item.key].listen %}
+  listen {{ addr }}:443 ssl http2 deferred{% if ansible_distribution_version >= "16.04" %} reuseport fastopen=256{% endif %};
+{% endfor %}
+{% elif protocol == "http" %}
+{% for addr in vips[item.key].listen %}
+  listen {{ addr }} deferred;
+{% endfor %}
+{% elif protocol == "tcp" %}
+{% for addr in vips[item.key].listen %}
+  listen {{ addr }};
+{% endfor %}
+{% elif protocol == "udp" %}
+{% for addr in vips[item.key].listen %}
+  listen {{ addr }} udp reuseport;
+{% endfor %}
+{% endif %}
+{% if loop.last and (protocol == "http" or protocol == "https" or protocol == "wss") %}
+{% if vips[item.key].server_name is string %}
+  server_name {{ vips[item.key].server_name }};
+  access_log /var/log/nginx/{{ vips[item.key].server_name|replace(".","-") }}.log perflog if=$dolog;
+{% elif vips[item.key].server_name is not string %}
+  server_name {% for name in vips[item.key].server_name %}{% if not loop.last %}{{ name }} {% endif %}{% if loop.last %}{{ name }};{% endif %}{% endfor %}
+
+  access_log /var/log/nginx/{{ vips[item.key].server_name[0]|replace(".","-") }}.log perflog if=$dolog;
+{% endif %}
+  access_log syslog:server={{ syslog_server }},tag=nginx_{{ site }} perflog if=$dolog;
+{% endif %}
+{% endfor %}
+{% for protocol in vips[item.key].proto %}
+{% if (protocol == 'https' or protocol == "wss") %}
+  ssl_certificate {{ ssl_base }}/{{ vips[item.key].ssl_crt }};
+  ssl_certificate_key {{ ssl_base }}/{{ vips[item.key].ssl_key }};
+  ssl_dhparam {{ nginx_base }}/{{ vips[item.key].ssl_dhparam | default(ssl_dhparam) }};
+  ssl_ciphers {{ vips[item.key].ciphers | default(ciphers) }};
+  ssl_prefer_server_ciphers on;
+  ssl_protocols TLSv1 TLSv1.1 TLSv1.2;
+  ssl_session_tickets off;
+{% if vips[item.key].ssl_staple is defined %}
+  ssl_stapling on;
+  ssl_stapling_verify on;
+  ssl_trusted_certificate {{ ssl_base }}/{{ vips[item.key].ssl_staple }};
+  resolver 172.29.248.10;
+{% endif %}
+{% if vips[item.key].ssl_stapling_responder is defined %}
+  ssl_stapling_responder {{ vips[item.key].ssl_stapling_responder }};
+{% endif %}
+  client_body_timeout 5s;
+  client_header_timeout 5s;
+{% if (vips[item.key].send_timeout is defined and vips[item.key].send_timeout is string) %}
+  proxy_send_timeout {{ vips[item.key].send_timeout|default('5s') }};
+{% endif %}
+{% if (vips[item.key].read_timeout is defined and vips[item.key].read_timeout is string) %}
+  proxy_read_timeout {{ vips[item.key].read_timeout|default('5s') }};
+{% endif %}
+{% if vips[item.key].ssl_client_auth is defined %}
+  ## Client certificate validation
+  ssl_verify_client on;
+  ssl_verify_depth 3;
+  ssl_client_certificate {{ ssl_base }}/{{ vips[item.key].ssl_client_auth }};
+  proxy_set_header 'ClientCert-Subject-CN'     '$ssl_client_s_dn';
+  proxy_set_header 'ClientCert-Issuer'         '$ssl_client_i_dn';
+  proxy_set_header 'ClientCert-Serial-Number'  '$ssl_client_serial';
+  proxy_set_header 'ClientCert-Verification'   '$ssl_client_verify';
+  proxy_set_header 'ClientCert-Not-After'      'Dec 31 23:59:59 2020 GMT';
+{% endif %}
+  include {{ nginx_conf_d }}/*_https.inc;
+{% endif %}
+{% if loop.first and ( protocol == "http" or protocol == "https" or protocol == "wss" ) %}
+  include {{ nginx_conf_d }}/*_http.inc;
+{% endif %}
+{% if vips[item.key].rate_limit is defined %}
+{% if vips[item.key].server_name is string %}
+  limit_req zone={{ vips[item.key].server_name }} burst={{ vips[item.key].rate_limit.burst|default('10') }}{% if not vips[item.key].rate_limit_delay|default('no') %} nodelay{% endif %};
+{% elif vips[item.key].server_name is not string %}
+{% for name in vips[item.key].server_name %}{% if loop.first %}  limit_req zone={{ name }} burst={{ vips[item.key].rate_limit.burst|default('10') }}{% if not vips[item.key].rate_limit_delay|default('no') %} nodelay{% endif %}{% endif %};
+{% endfor %}
+{% endif %}
+{% endif %}
+{% if (vips[item.key].max_body is defined and vips[item.key].max_body is string) %}
+  # Default overridden by max_body
+  client_max_body_size {{ vips[item.key].max_body }};
+{% endif %}
+{% if loop.last and (protocol == "http" or protocol == "https") %}
+  ## L7-Filter
+  location / {
+    deny all;
+    return 204;
+  }
+  location /favicon.ico  {
+    deny all;
+    return 204;
+  }
+{% for key, value in vips[item.key].locations|dictsort %}
+{% if value.context is not string %}
+{% for context in value.context %}
+  location {{ context }} {
+  proxy_pass http://{{ value.backend }};
+{% if value.proxy_buff is defined %}
+{% if value.proxy_buff|default('on') == 'off' %}
+  proxy_buffering off;
+{% endif %}
+{% endif %}
+{% if value.send_timeout is defined %}
+  proxy_send_timeout {{ value.send_timeout|default('5s') }};
+{% endif %}
+{% if value.read_timeout is defined %}
+  proxy_read_timeout {{ value.read_timeout|default('5s') }};
+{% endif %}
+{% if value.allow_upgrade is defined %}
+{% if value.allow_upgrade|default('false') == 'true' %}
+  include {{ nginx_conf_d }}/ws.enable;
+  include {{ nginx_conf_d }}/*_http.inc;
+{% if protocol == "https" %}
+  include {{ nginx_conf_d }}/*_https.inc;
+{% endif %}
+{% endif %}
+{% endif %}
+{% if value.legacy_glassfish is defined %}
+{% if value.legacy_glassfish == 'true' %}
+  include {{ nginx_conf_d }}/gf.enable;
+  include {{ nginx_conf_d }}/*_http.inc;
+{% if protocol == "https" %}
+  include {{ nginx_conf_d }}/*_https.inc;
+{% endif %}
+{% endif %}
+{% endif %}
+{% if loop.first %}
+{% if value.probe is defined %}
+  health_check interval={{ value.probe_interval|default('10s') }} fails={{ value.probe_fails|default('2') }} passes=5 uri={{ value.probe_uri|default('/monitoring/status') }} match={{ value.probe|default('monitoring-default') }}{% if value.probe_port is defined %} port={{ value.probe_port }};{% else %}; {% endif %}
+
+{% else %}
+  health_check interval={{ value.probe_interval|default('10s') }} fails={{ value.probe_fails|default('2') }} passes=5 uri={{ value.probe_uri|default('/') }} match={{ value.probe|default('monitoring-default') }};
+{% endif %}
+{% endif %}
+  }
+{% endfor %}
+{% elif value.context is string %}
+  location {{ value.context }} {
+  proxy_pass http://{{ value.backend }};
+{% if value.proxy_buff is defined %}
+{% if value.proxy_buff == 'off' %}
+  proxy_buffering off;
+{% endif %}
+{% endif %}
+{% if value.send_timeout is defined %}
+  proxy_send_timeout {{ value.send_timeout|default('5s') }};
+{% endif %}
+{% if value.allow_upgrade is defined %}
+{% if value.allow_upgrade == 'true' %}
+  include {{ nginx_conf_d }}/ws.enable;
+  include {{ nginx_conf_d }}/*_http.inc;
+{% if protocol == "https" %}
+  include {{ nginx_conf_d }}/*_https.inc;
+{% endif %}
+{% endif %}
+{% endif %}
+{% if value.legacy_glassfish is defined %}
+{% if value.legacy_glassfish == 'true' %}
+   include {{ nginx_conf_d }}/gf.enable;
+   include {{ nginx_conf_d }}/*_http.inc;
+{% if protocol == "https" %}
+  include {{ nginx_conf_d }}/*_https.inc;
+{% endif %}
+{% endif %}
+{% endif %}
+{% if loop.first %}
+{% if value.probe is defined %}
+  health_check interval={{ value.probe_interval|default('10s') }} fails={{ value.probe_fails|default('2') }} passes=5 uri={{ value.probe_uri|default('/monitoring/status') }} match={{ value.probe|default('monitoring-default') }}{% if value.probe_port is defined %} port={{ value.probe_port }};{% else %}; {% endif %}
+
+{% else %}
+  health_check interval={{ value.probe_interval|default('10s') }} fails={{ value.probe_fails|default('2') }} passes=5 uri={{ value.probe_uri|default('/') }} match={{ value.probe|default('monitoring-default') }};
+{% endif %}
+{% endif %}
+  }
+{% endif %}
+{% endfor %}
+{% if vips[item.key].server_name is string %}
+  status_zone {{ vips[item.key].server_name|replace(".","-")|replace(" ","-") }}-L7;
+{% elif vips[item.key].server_name is not string %}
+  status_zone {{ vips[item.key].server_name[0]|replace(".","-")|replace(" ","-") }}-L7;
+{% endif %}
+{% endif %}
+{% if protocol == "tcp" %}
+  health_check;
+{% endif %}
+{% if protocol == "udp" %}
+  health_check udp;
+{% endif %}
+{% if loop.last and (protocol == "tcp" or protocol == "udp") %}
+  health_check_timeout 10s;
+  proxy_connect_timeout 10s;
+  proxy_timeout 10m;
+  proxy_pass {{ vips[item.key].backend }};
+{% if vips[item.key].server_name is string %}
+  status_zone {{ vips[item.key].server_name|replace(".","-")|replace(" ","-") }}-L4;
+{% elif vips[item.key].server_name is not string %}
+  status_zone {{ vips[item.key].server_name[0]|replace(".","-")|replace(" ","-") }}-L4;
+{% endif %}
+{% endif %}
+{% if loop.last and protocol == "wss" %}
+  proxy_buffers 8 32k;
+  proxy_buffer_size 64k;
+  proxy_connect_timeout       120;
+  proxy_read_timeout          300;
+  proxy_set_header Upgrade $http_upgrade;
+  proxy_set_header Connection "upgrade";
+
+  access_log /var/log/nginx/{{ vips[item.key].server_name|replace(".","-") }}.log perflog if=$dolog;
+  access_log syslog:server={{ syslog_server }},tag=nginx_{{ site }} perflog if=$dolog;
+
+  location / {
+    proxy_pass http://{{ vips[item.key].backend }};
+  }
+  status_zone {{ vips[item.key].server_name|replace(".","-") }}-L7;
+{% endif %}
+{% endfor %}
+}

@@ -1,0 +1,37 @@
+---
+ciphers: "EECDH+AESGCM:AES256+EECDH"
+ssl_dhparam: dhparams.pem
+
+monitor_acl: 
+  - 10.1.48.0/20
+  - 10.1.32.0/24
+  - 10.1.208.127/32
+  - 10.35.2.184/30
+  - 10.50.32.180/32
+  - 10.50.33.180/32
+  - 10.50.34.180/32
+  - 10.50.35.180/32
+  - 10.32.2.180/32
+  - 10.33.2.180/32 
+  - 10.60.2.0/24
+  - 10.61.2.0/24
+
+api_acl:
+  - 10.1.48.0/24
+
+probes:
+  monitoring-default:
+    status: 100-599
+  monitoring-200:
+    status: 200
+  monitoring-xml:
+    status: 200
+    header: Content-Type = application/xml
+    body: '!~ "varnish"'
+  monitoring-json:
+    status: 200
+    header: Content-Type = application/json
+    body: '!~ "varnish"'
+
+
+

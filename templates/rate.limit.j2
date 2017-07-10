@@ -1,0 +1,11 @@
+{% if vips[item.key].rate_limit is defined %}
+  ## Rate-limiting
+{% if vips[item.key].server_name is string %}
+  limit_req_zone $binary_remote_addr zone={{ vips[item.key].server_name }}:20m rate={{ vips[item.key].rate_limit }};
+{% elif vips[item.key].server_name is not string %}
+{% for name in vips[item.key].server_name %}{% if loop.first %} limit_req_zone $binary_remote_addr zone={{ name }}:20m rate={{ vips[item.key].rate_limit }};{% endif %}
+{% endfor %}
+{% endif %}
+{% else %}
+  ## No vip-based rate-limiting defined for {{ vips[item.key].server_name }}
+{% endif %}

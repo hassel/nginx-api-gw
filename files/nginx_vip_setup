@@ -1,0 +1,135 @@
+#!/bin/bash
+#
+# This script takes a list of IPs from a file and an action as params and runs
+# iptools accordingly to setup the IPs.
+#
+# It is meant to be executed as a post-up/pre-down
+# command by the ifup/ifdown scripts or manually, depending on the action/needs.
+#
+# It has been designed to run on nginx hosts/CTXs to setup
+# the VIPs in the form of loopback additional addresses.
+#
+# -------------------
+# Modes of operation:
+#
+# up: configures all the addresses specified in the addresses file unless they are
+# already in place.
+#
+# down: deconfigures all the addresses specified in the addresses file.
+#
+# sync: compares what IPs should be configured with the ones already assigned
+# to the interface. Deletes the ones not supposed to be in place and adds the
+# ones missing.
+#
+# Nicola Volpini 2016 - <nicola.volpini@kambi.com>
+#
+
+# Tunables
+
+ADDRESSES_FILE="/opt/nginx_vips.cfg"
+#ADDRESSES_FILE="kmb_loopbacks.cfg"
+INTERFACE="lo"
+DEBUG=false
+
+# ///
+
+# internal vars, don't change
+OPERATION=$1
+# ///
+
+# Check rights
+if [ "$(id -u)" != "0" ]; then
+  echo "Please run with sudo/as root."
+  exit 1
+fi
+
+
+# goes through a list of IPs and adds/removes them to the specified interface
+# depending on the action passed (add/del)
+function loopback_setup {
+
+  ACTION="$1"
+
+  # The following while loop ensures we add the loopbacks only when not already 
+  # in place, and to remove them unless already absent. Needed to avoid errors.
+  #
+  # (This if/elif could be made more elegant. I could not find a reliable way
+  # to make the action check work while still checking the exit status
+  # of the ip command, hence the nesting.)
+
+  while read -r LOOPBACK_LINE
+  do
+    if [[ ${ACTION} == "add" ]]; then
+      # check if the address is assigned to the interface
+      ip -4 address show lo | grep inet | egrep -v '\b127' | awk {'print $2'} | \
+        sort | grep -q ${LOOPBACK_LINE}
+      if [[ $? -eq 1 ]]; then
+        /sbin/ip address ${ACTION} ${LOOPBACK_LINE} dev ${INTERFACE}
+      fi
+    elif [[ ${ACTION} == "del" ]]
+    then
+      ip -4 address show lo | grep inet | egrep -v '\b127' | awk {'print $2'} | \
+        sort | grep -q ${LOOPBACK_LINE}
+      if [[ $? -eq 0 ]]; then
+        /sbin/ip address ${ACTION} ${LOOPBACK_LINE} dev ${INTERFACE}
+      fi
+    fi
+  done < "${ADDRESSES_FILE}"
+
+}
+
+# checks what is in the addresses file and syncs the config to be idempotent
+function loopback_sync {
+
+# Fetch the IPs we want to be configured from the file
+TO_BE_CONFIGURED=$(sort $ADDRESSES_FILE)
+
+# Check what IPs we have in runtime, skipping the default loopback
+RUNTIME=`ip -4 add show lo | grep inet | egrep -v '\b127' | awk {'print $2'} | sort`
+
+# List the IPs that are not supposed to be active
+ONLY_IN_RUNTIME=`comm -13 <(echo "$TO_BE_CONFIGURED") <(echo "$RUNTIME")`
+
+# some debug lines
+if $DEBUG; then
+  echo "currently configured: ${RUNTIME} -"
+  echo "in the config file: ${TO_BE_CONFIGURED} -"
+  echo "should be removed: ${ONLY_IN_RUNTIME} -"
+fi
+
+# In case we found any IP not meant to be there, delete it!
+if [ ! -z "$ONLY_IN_RUNTIME" ]; then
+  while read -r LOOPBACK_LINE
+  do
+    /sbin/ip address del ${LOOPBACK_LINE} dev ${INTERFACE}
+  done <<< "${ONLY_IN_RUNTIME}"
+fi
+
+# Setup new addresses normally by calling dedicated function
+loopback_setup add
+
+}
+
+case ${OPERATION} in
+  up)
+    loopback_setup add
+  ;;
+
+  down)
+    loopback_setup del
+  ;;
+  sync)
+    loopback_sync
+  ;;
+
+  *)
+    echo "Usage:"
+    echo "------"
+    echo "$0 up"
+    echo "or"
+    echo "$0 down"
+    echo "or"
+    echo "$0 sync"
+  ;;
+
+esac

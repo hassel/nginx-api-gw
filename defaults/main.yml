@@ -1,0 +1,26 @@
+---
+# Paths & files
+nginx_base: /etc/nginx
+nginx_conf_d: /etc/nginx/conf.d
+ssl_base: /etc/ssl
+
+default_files:
+  - default.conf
+  - example_ssl.conf
+
+header_files:
+  - header_https.inc
+  - header_http.inc
+  - gf.enable
+  - ws.enable
+
+# Apptech stuff
+
+catalog: catalog.yml
+serverlist: serverlist.yml
+url: catalog.services.kambi.com
+
+# Vars and booleans
+#
+nginx_version: 1.11.5-1
+syslog_server: syslog1.sth.services.kambi.com

@@ -1,0 +1,7 @@
+match {{ item.key }} {
+    status {{ probes[item.key].status|default('100-599') }};
+    {% if probes[item.key].header is defined %}header {{ probes[item.key].header }};
+    {% endif %}
+{% if probes[item.key].body is defined %}body {{ probes[item.key].body }};
+{% endif %}
+    }

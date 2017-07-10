@@ -1,0 +1,14 @@
+upstream {{ item.key }} {
+  zone {{ item.key }}-dynamic 64k;
+{% if upstreams[item.key].algo is defined and upstreams[item.key].algo == 'sticky_cookie' %}
+  sticky cookie srv_id expires=1h domain=.kambi.com secure path=/;
+{% else %}
+  {{ upstreams[item.key].algo|default("least_time last_byte") }};
+{% endif %}
+{% for host in upstreams[item.key].backends %}
+  server {{ host }} fail_timeout={{ upstreams[item.key].fail_time|default("15") }} max_fails={{ upstreams[item.key].max_fail|default("3") }};
+{% endfor %}
+{% if upstreams[item.key].prefix == 'sfarm' %}
+  keepalive 128;
+{% endif %}
+}
