@@ -83,7 +83,7 @@ vips:
         - http                                      http enabled vip
         - wss                                       WebSocketSecure enabled vip without no L7 filter (only serves /). 
         - tcp                                       tcp enabled vip
-	- udp					    udp enabled vip
+        - udp					    udp enabled vip
       prefix: conf|stream                           Config prefix, determins where in the core config should be included. Prefix "config" is used for L7 vips, "stream" for L4 vips.
       ssl_crt: /etc/ssl/cert.pem                    Certificate in pem format.
       ssl_key: /etc/ssl/key.pem                     Key in pem format.
