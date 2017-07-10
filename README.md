@@ -126,7 +126,6 @@ vips:
 ```yaml
  upstreams: 
    upstream_name:                                   Name of the backend-group
-    in_catalog: no|yes                              Information avalible in catalog ? If defined, no need to list backends below. If in_catalog is true. upstream_name needs to corlolate with the application (form the catalog)
     prefix: sfarm|tcp                               Config prefix, determins where in the core config it should be included. Prefix "sfarm" is used for L7 vips, "tcp" for L4 vips.
     backends:
       - backendaddr:port1                           backend ipv4 address & port. This is handles as a string by ansible.
