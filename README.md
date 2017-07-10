@@ -82,7 +82,7 @@ vips:
         - https                                     TLS enabled http vip
         - http                                      http enabled vip
         - tcp                                       tcp enabled vip
-        - wss                                       WebSocketSecure enabled vip without no L7 filter (only servers /). Only used for "push".
+        - wss                                       WebSocketSecure enabled vip without no L7 filter (only serves /). 
       prefix: conf|stream                           Config prefix, determins where in the core config should be included. Prefix "config" is used for L7 vips, "stream" for L4 vips.
       ssl_crt: /etc/ssl/cert.pem                    Certificate in pem format.
       ssl_key: /etc/ssl/key.pem                     Key in pem format.
@@ -132,7 +132,7 @@ vips:
       - backendaddr:port1                           backend ipv4 address & port. This is handles as a string by ansible.
       - backendaddr:port2                           -||-
       - backendaddr:port3 down                      -||-
-    algo: least_conn                                Algorithm for balance decisions, more [info](http://nginx.org/en/docs/http/ngx_http_upstream_module.html) here
+    algo: least_conn                                Algorithm for balance decisions, more [info](http://nginx.org/en/docs/http/ngx_http_upstream_module.html) here and in addition "sticky_cookie" to enable cookie injection. 
     fail_time: 20                                   Passive servercheck metrics  
     max_fail: 10                                    -||-
 ```
