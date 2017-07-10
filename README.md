@@ -10,12 +10,10 @@
  Example:
 
 ```yaml
- site: sth                                          Site names, used for logging. Has no default
- machinetype: lb                                    Machine type. No implemented usage. Has no default
  ciphers: "EECDH+AESGCM:EDH+AESGCM:..."             "ciphers:" values are originated from ngnix/vars
 
  nginx_version: 1.9.13-2                            "nginx_version:" value originates from nginx/defaults, sets the nginx-plus version to be installed
-
+ nginx_cookie: .meh.com                             "nginx_cookie:" value for cookie injection
  header_files:                                      "header_files" values are originated form nginx/defaults
   - header_http.inc                                 Defineds vip-global header injection for all vips in a cluster. GFS headers are normally only used internally when glass-fish is used.
   - header_gsf_http.inc                             header_gfs_* and header_* can NOT and SHOULD not be defined at the same time.
