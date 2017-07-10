@@ -183,7 +183,6 @@ vips:
         context: /offering/
         backend: sfarm-offering
 
-
  upstreams:
    sfarm-offering:
      in_catalog: no
