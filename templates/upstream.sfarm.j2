@@ -1,7 +1,7 @@
 upstream {{ item.key }} {
   zone {{ item.key }}-dynamic 64k;
 {% if upstreams[item.key].algo is defined and upstreams[item.key].algo == 'sticky_cookie' %}
-  sticky cookie srv_id expires=1h domain=.kambi.com secure path=/;
+  sticky cookie srv_id expires=1h domain={{ nginx_cookie }} secure path=/;
 {% else %}
   {{ upstreams[item.key].algo|default("least_time last_byte") }};
 {% endif %}

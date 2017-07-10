@@ -27,7 +27,6 @@
 # Tunables
 
 ADDRESSES_FILE="/opt/nginx_vips.cfg"
-#ADDRESSES_FILE="kmb_loopbacks.cfg"
 INTERFACE="lo"
 DEBUG=false
 

@@ -14,13 +14,6 @@ header_files:
   - gf.enable
   - ws.enable
 
-# Apptech stuff
-
-catalog: catalog.yml
-serverlist: serverlist.yml
-url: catalog.services.kambi.com
-
-# Vars and booleans
-#
 nginx_version: 1.11.5-1
-syslog_server: syslog1.sth.services.kambi.com
+nginx_cookie=.kabmi.com
+syslog_server: syslog1.sth.services.meh.com

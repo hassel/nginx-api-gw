@@ -70,10 +70,10 @@
 ```yaml
 vips:
    vip_name: 
-      server_name: example.kambi.com                SNI Server-name
+      server_name: example.meh.com                SNI Server-name
       server_name:
-        - can.be.a.list.a.kambi.com                 This can also be a list
-        - can.be.a.list.b.kambi.com                 
+        - can.be.a.list.a.meh.com                 This can also be a list
+        - can.be.a.list.b.meh.com                 
       listen: listen-addr:port                      Only define port when L4 vip, L7 vips (http/https) only requires an address
       listen:
         - listen-addr1:port1                        This can also be a list
@@ -141,7 +141,7 @@ vips:
 ```yaml
  vips:
    vipname:
-     server_name: offering-mq-.bru.service.kambi.com
+     server_name: offering-mq-.bru.service.meh.com
      listen: 10.10.10.10:61616
      proto:
       - tcp
@@ -160,14 +160,14 @@ vips:
 ```yaml
  vips:
    api: 
-      server_name: e4-api.kambi.com
+      server_name: e4-api.meh.com
       listen: 185.63.76.8
       proto: 
         - https
         - http
       prefix: conf
-      ssl_crt: /etc/ssl/wildcard_kambi_bundle.crt
-      ssl_key: /etc/ssl/wildcard_kambi_bundle.key
+      ssl_crt: /etc/ssl/wildcard_meh_bundle.crt
+      ssl_key: /etc/ssl/wildcard_meh_bundle.key
       ssl_staple: /etc/ssl/gd_bundle.crt
       rate_limit: 600r/m
       rate_limit_delay: no
