@@ -200,8 +200,8 @@ vips:
       - 10.50.3.65:6081
       - 10.50.3.66:6081
     algo: hash $request_uri
-    probe: monitoring-xml
- probes:
+ 
+  probes:
    monitoring-xml:
      status: 200
      header: Content-Type = application/xml
