@@ -78,11 +78,12 @@ vips:
       listen:
         - listen-addr1:port1                        This can also be a list
         - listen-addr2:port2
-      proto:                                        If tcp or is defined, no other protocols can be defined. If http|https is defined, https|http can also be defined.
+      proto:                                        If tcp or udp is defined, no other protocols can be defined. If http|https is defined, https|http can also be defined.
         - https                                     TLS enabled http vip
         - http                                      http enabled vip
-        - tcp                                       tcp enabled vip
         - wss                                       WebSocketSecure enabled vip without no L7 filter (only serves /). 
+        - tcp                                       tcp enabled vip
+	- udp					    udp enabled vip
       prefix: conf|stream                           Config prefix, determins where in the core config should be included. Prefix "config" is used for L7 vips, "stream" for L4 vips.
       ssl_crt: /etc/ssl/cert.pem                    Certificate in pem format.
       ssl_key: /etc/ssl/key.pem                     Key in pem format.
