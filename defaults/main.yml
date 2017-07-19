@@ -15,5 +15,5 @@ header_files:
   - ws.enable
 
 nginx_version: 1.11.5-1
-nginx_cookie=.kabmi.com
+nginx_cookie=.meh.com
 syslog_server: syslog1.sth.services.meh.com
