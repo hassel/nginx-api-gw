@@ -90,6 +90,9 @@ vips:
       rate_limit_delay: no
       send_timeout: 5s                              Defines a timeout for sending a request to the proxied servers for this vip
       read_timeout: 5s                              Defines a timeout for reading a response from the proxied servers for this vip
+      proxy_connect_timeout: 5s                     Sets connction timeout for udp/tcp vips 
+      proxy_timeout: 10m                            Timeout between two successive read or write operations on client or proxied server connections for tcp/udp vips.
+      proxy_responses: 1                            Sets the number of datagrams expected from the proxied server in response to the client request if the UDP protocol is used.
 ```
 
 ## Location/Context variables
