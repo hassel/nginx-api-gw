@@ -26,7 +26,11 @@ server {
 
   access_log /var/log/nginx/{{ vips[item.key].server_name[0]|replace(".","-") }}.log perflog if=$dolog;
 {% endif %}
+{% if vips[item.key].syslog is defined and vips[item.key].syslog == True %}
+  access_log syslog:server={{ syslog_server }},tag=nginx_{{ site }} perflog;
+{% else %}
   access_log syslog:server={{ syslog_server }},tag=nginx_{{ site }} perflog if=$dolog;
+{% endif %}
 {% endif %}
 {% endfor %}
 {% for protocol in vips[item.key].proto %}
@@ -84,16 +88,18 @@ server {
   client_max_body_size {{ vips[item.key].max_body }};
 {% endif %}
 {% if loop.last and (protocol == "http" or protocol == "https") %}
+{% for key, value in vips[item.key].locations|dictsort %}
+{% if loop.first and (value.context|join(' ') != "/") %}
   ## L7-Filter
   location / {
     deny all;
-    return 204;
+    return 418;
   }
   location /favicon.ico  {
     deny all;
-    return 204;
+    return 418;
   }
-{% for key, value in vips[item.key].locations|dictsort %}
+{% endif %}
 {% if value.context is not string %}
 {% for context in value.context %}
   location {{ context }} {
@@ -187,12 +193,17 @@ server {
   health_check;
 {% endif %}
 {% if protocol == "udp" %}
+{% if vips[item.key].health_check == "dns" %}
+  health_check match=dns udp;
+{% else %}
   health_check udp;
+{% endif %}
 {% endif %}
 {% if loop.last and (protocol == "tcp" or protocol == "udp") %}
   health_check_timeout 10s;
-  proxy_connect_timeout 10s;
-  proxy_timeout 10m;
+  proxy_connect_timeout {{ vips[item.key].proxy_connet_timeout|default("5s") }};
+  proxy_timeout {{ vips[item.key].proxy_timeout|default("10m") }};
+  proxy_responses {{ vips[item.key].proxy_responses|default("1") }};
   proxy_pass {{ vips[item.key].backend }};
 {% if vips[item.key].server_name is string %}
   status_zone {{ vips[item.key].server_name|replace(".","-")|replace(" ","-") }}-L4;
