@@ -39,7 +39,7 @@
      body: '!~ "varnish"'                           Make sure "varnish" is not a part of the body.
 ```
 
-## Config generation structuure
+## Config generation structure
  * vips: list of vips to be setup. key will be the name of the config file name. Values originated from group_var
  * upstreams: list of avalible upstreams to be used in a vip. key will be name of the config file name. Values originated from group_var
  * probes: list of probes to be used in a vip. key will be a part of the config file name.
