@@ -1,11 +1,13 @@
 ---
 ciphers: "EECDH+AESGCM:AES256+EECDH"
+tls_proto: TLSv1 TLSv1.1 TLSv1.2
+ssl_dhparam: dhparams.pem
 
 monitor_acl: 
-  - 10.10.10.0/20
+  - 10.1.10.0/20
 
 api_acl:
-  - 10.10.10.0/24
+  - 10.1.10.0/24
 
 probes:
   monitoring-default:
