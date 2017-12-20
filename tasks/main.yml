@@ -30,6 +30,13 @@
     - nginx-install
   register: default_conf
 
+- name: create whitelist dir
+  file: dest={{ nginx_conf_d }}/whitelists state=directory
+  tags:
+    - nginx
+    - nginx-install
+    - nginx-frontend
+
 - name: create loopback addr list
   template: src=nginx_vips.cfg.j2 dest=/opt/nginx_vips.cfg mode=0644
   register: addr
@@ -62,6 +69,16 @@
   tags:
     - nginx
     - nginx-headers
+
+- name: generate nginx whitelist config
+  template: src=whitelist.j2 dest={{ nginx_conf_d }}/whitelists/{{ item.key }}.conf
+  with_dict: '{{ whitelist }}'
+  when: whitelist is defined
+  register: nginx_whitelist
+  tags:
+    - nginx
+    - nginx-frontend
+    - nginx-config
 
 - name: generate nginx backend config
   template: src=upstream.sfarm.j2 dest={{ nginx_conf_d }}/{{ item.key }}.{{ upstreams[item.key].prefix|default('sfarm') }}
@@ -130,6 +147,7 @@
     - nginx-monitor
     - nginx-frontend
     - nginx-config
+    - vip-wrapper
   ignore_errors: true
 
 - name: reconfigure and notify reload
@@ -178,35 +196,3 @@
     - nginx-frontend
     - nginx-config
     - motd
-
-- hipchat: 
-    token='{{ hipchat_token }}'
-    room='{{ hipchat_room }}'
-    api='{{ hipchat_api }}' from="nginx-{{ site }}" 
-    msg="Deploy successful on {{ ansible_nodename }}"
-    validate_certs=no color=green
-  when: nginx_config_check|success
-  ignore_errors: true
-  tags:
-    - nginx
-    - nginx-core
-    - nginx-backend
-    - nginx-monitor
-    - nginx-frontend
-    - nginx-config
-
-- hipchat: 
-    token='{{ hipchat_token }}'
-    room='{{ hipchat_room }}'
-    api='{{ hipchat_api }}' from="nginx-{{ site }}" 
-    msg="Deploy unsuccessful on {{ ansible_nodename }} {{ nginx_config_check.stderr }}"
-    validate_certs=no color=red
-  when: nginx_config_check|failed
-  ignore_errors: true
-  tags:
-    - nginx
-    - nginx-core
-    - nginx-backend
-    - nginx-monitor
-    - nginx-frontend
-    - nginx-config
