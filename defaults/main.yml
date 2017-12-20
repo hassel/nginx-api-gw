@@ -14,6 +14,5 @@ header_files:
   - gf.enable
   - ws.enable
 
-nginx_version: 1.11.5-1
-nginx_cookie=.meh.com
-syslog_server: syslog1.sth.services.meh.com
+nginx_version: 1.13.4-1
+syslog_server: syslog.meh.com
