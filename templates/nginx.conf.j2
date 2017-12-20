@@ -68,7 +68,7 @@ http {
   log_format perflog '$remote_addr - $remote_user [$time_local] "$request" $status $body_bytes_sent "$http_referer" '
   '"$http_user_agent" "$http_x_forwarded_for" "$ssl_cipher" "$ssl_protocol" "$ssl_session_reused" "$ssl_server_name" '
   '"$upstream_addr" "$upstream_status" "$upstream_connect_time" "$upstream_response_length" "$upstream_response_time" '
-  '"$request_id" "$tcpinfo_rtt, $tcpinfo_rttvar, $tcpinfo_snd_cwnd, $tcpinfo_rcv_space"';
+  '"$request_id" "$tcpinfo_rtt, $tcpinfo_rttvar, $tcpinfo_snd_cwnd, $tcpinfo_rcv_space","$ssl_client_verify"';
   # Maps
 
   # Set to true if first to last byte is longer then 500 ms 
@@ -138,7 +138,8 @@ http {
 }
 
 stream {
-  # stream-Includes
+
+# stream-Includes
   include /etc/nginx/conf.d/*.stream;
   include /etc/nginx/conf.d/*.tcp;
   include /etc/nginx/conf.d/*.udp;

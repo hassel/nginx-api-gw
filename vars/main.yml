@@ -1,6 +1,6 @@
 ---
 ciphers: "EECDH+AESGCM:AES256+EECDH"
-tls_proto: TLSv1 TLSv1.1 TLSv1.2
+tls_proto: TLSv1.2 TLSv1.3
 ssl_dhparam: dhparams.pem
 
 monitor_acl: 

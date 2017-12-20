@@ -1,4 +1,14 @@
 server {
+{% if vips[item.key].server_whitelist is defined %}
+{% for net in vips[item.key].server_whitelist %}
+{% if net | ipaddr %}
+  allow {{ net }};
+{% else %}
+  include {{ nginx_conf_d }}/whitelists/{{ net }}.conf;
+{% endif %}
+{% endfor %}
+  deny all;
+{% endif %}
 {% for protocol in vips[item.key].proto %}
 {% if (protocol == "https" or protocol == "wss") %}
 {% for addr in vips[item.key].listen %}
@@ -40,7 +50,7 @@ server {
   ssl_dhparam {{ nginx_base }}/{{ vips[item.key].ssl_dhparam | default(ssl_dhparam) }};
   ssl_ciphers {{ vips[item.key].ciphers | default(ciphers) }};
   ssl_prefer_server_ciphers on;
-  ssl_protocols TLSv1 TLSv1.1 TLSv1.2;
+  ssl_protocols {{ vips[item.key].tls_proto|default(tls_proto)}};
   ssl_session_tickets off;
 {% if vips[item.key].ssl_staple is defined %}
   ssl_stapling on;
@@ -64,11 +74,16 @@ server {
   ssl_verify_client on;
   ssl_verify_depth 3;
   ssl_client_certificate {{ ssl_base }}/{{ vips[item.key].ssl_client_auth }};
+{% if vips[item.key].header_format is defined and vips[item.key].header_format == "non-rfc2253" %}
+  proxy_set_header 'ClientCert-Subject-CN'     '$ssl_client_s_dn_legacy';
+  proxy_set_header 'ClientCert-Issuer'         '$ssl_client_i_dn_legacy';
+{% else %}
   proxy_set_header 'ClientCert-Subject-CN'     '$ssl_client_s_dn';
   proxy_set_header 'ClientCert-Issuer'         '$ssl_client_i_dn';
+{% endif %}
   proxy_set_header 'ClientCert-Serial-Number'  '$ssl_client_serial';
   proxy_set_header 'ClientCert-Verification'   '$ssl_client_verify';
-  proxy_set_header 'ClientCert-Not-After'      'Dec 31 23:59:59 2020 GMT';
+  proxy_set_header 'ClientCert-Not-After'      '$ssl_client_v_end';
 {% endif %}
   include {{ nginx_conf_d }}/*_https.inc;
 {% endif %}
@@ -103,6 +118,12 @@ server {
 {% if value.context is not string %}
 {% for context in value.context %}
   location {{ context }} {
+{% if value.location_whitelist is defined %}
+{% for net in value.location_whitelist %}
+  allow {{ net }};
+{% endfor %}
+  deny all;
+{% endif %}
   proxy_pass http://{{ value.backend }};
 {% if value.proxy_buff is defined %}
 {% if value.proxy_buff|default('on') == 'off' %}
@@ -145,6 +166,12 @@ server {
 {% endfor %}
 {% elif value.context is string %}
   location {{ value.context }} {
+{% if value.location_whitelist is defined %}
+{% for net in value.location_whitelist %}
+  allow {{ net }};
+{% endfor %}
+  deny all;
+{% endif %}
   proxy_pass http://{{ value.backend }};
 {% if value.proxy_buff is defined %}
 {% if value.proxy_buff == 'off' %}
@@ -193,11 +220,7 @@ server {
   health_check;
 {% endif %}
 {% if protocol == "udp" %}
-{% if vips[item.key].health_check == "dns" %}
-  health_check match=dns udp;
-{% else %}
   health_check udp;
-{% endif %}
 {% endif %}
 {% if loop.last and (protocol == "tcp" or protocol == "udp") %}
   health_check_timeout 10s;
