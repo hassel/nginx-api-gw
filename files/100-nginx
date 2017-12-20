@@ -1,5 +1,6 @@
 #!/bin/bash -ue
 con=$(curl -s 127.0.0.1/status/connections/active)
+state=$(if [ -a /etc/keepalived/STATE ]; then echo $(cat /etc/keepalived/STATE ); else if [ "$(pgrep nginx -c)" -le 1 ]; then echo broken; else echo awesome; fi;  fi)
 req=$(curl -s 127.0.0.1/status/requests/total)
 echo -e "                  Y.                      _"
 echo -e "                  YiL                   .\`\`\`."
@@ -17,7 +18,7 @@ echo -e "  .,._ \$b\`P\`     \"4\$\$\$\$\$iiiiiiii\$\$\$\$YY\$\$\$\$\$\$YiY;"
 echo -e "     \`,.\`\$:       :\$\$\$\$\$\$\$\$\$YYYYY\$\$\$\$\$\$\$\$\$YYiiYYL"
 echo -e "      \"\`;\$\$.    .;PPb\$\`.,.\`\`T\$\$YY\$\$\$\$YYYYYYiiiYYU:"
 echo -e "    ' ;\$P\$;;: ;;;;i\$y\$\"!Y\$\$\$b;\$\$\$Y\$YY\$\$YYYiiiYYiYY"
-echo -e "      \$Fi\$\$ .. \`\`:iii.\`-\";YYYYY\$\$YY\$\$\$\$\$YYYiiYiYYY \033[01;36mVERRY HA\033[0m"
+echo -e "      \$Fi\$\$ .. \`\`:iii.\`-\";YYYYY\$\$YY\$\$\$\$\$YYYiiYiYYY \033[01;36mVERRY HA\033[0m : My state is currently \033[01;44;35m $state \033[0m"
 echo -e "      :Y\$\$rb \`\`\`\`  \`_..;;i;YYY\$YY\$\$\$\$\$\$\$YYYYYYYiYY:"
 echo -e "       :$\$\$\$\$i;;iiiiidYYYYYYYYYY$\$\$\$\$\$YYYYYYYiiYYYY."
 echo -e "        \`\$\$\$\$\$\$\$YYYYYYYYYYYYY\$\$\$\$\$\$YYYYYYYYiiiYYYYYY"

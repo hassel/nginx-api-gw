@@ -27,6 +27,7 @@
 # Tunables
 
 ADDRESSES_FILE="/opt/nginx_vips.cfg"
+#ADDRESSES_FILE="kmb_loopbacks.cfg"
 INTERFACE="lo"
 DEBUG=false
 
@@ -81,7 +82,7 @@ function loopback_setup {
 function loopback_sync {
 
 # Fetch the IPs we want to be configured from the file
-TO_BE_CONFIGURED=$(sort $ADDRESSES_FILE)
+TO_BE_CONFIGURED=$(sort $ADDRESSES_FILE | uniq)
 
 # Check what IPs we have in runtime, skipping the default loopback
 RUNTIME=`ip -4 add show lo | grep inet | egrep -v '\b127' | awk {'print $2'} | sort`
