@@ -155,7 +155,7 @@
   register: nginx_config_apply
   failed_when: nginx_config_apply.rc != 0
   notify: reload nginx
-  when: nginx_config_check|success
+  when: nginx_config_check is success
   tags:
     - nginx
     - nginx-core
@@ -177,7 +177,7 @@
 
 - name: update motd
   template: src=motd.j2 dest=/etc/motd.tail
-  when: nginx_config_apply|success
+  when: nginx_config_apply is uccess
   tags:
     - nginx
     - nginx-backend
