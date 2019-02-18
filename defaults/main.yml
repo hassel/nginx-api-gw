@@ -15,4 +15,5 @@ header_files:
   - ws.enable
 
 nginx_version: 1.13.4-1
+nginx_package_name: nginx-plus
 syslog_server: syslog.meh.com
