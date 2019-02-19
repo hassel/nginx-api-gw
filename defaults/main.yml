@@ -14,5 +14,6 @@ header_files:
   - gf.enable
   - ws.enable
 
-nginx_version: 1.13.4-1
+nginx_version: 1.13.4-1~{{ ansible_distribution_release }}
+nginx_package_name: nginx-plus
 syslog_server: syslog.meh.com

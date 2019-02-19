@@ -1,6 +1,6 @@
 ---
 - name: install
-  apt: name=nginx-plus={{ nginx_version }}~{{ ansible_distribution_release }}  state=present update_cache=yes allow_unauthenticated=yes
+  apt: name={{ nginx_package_name }}={{ nginx_version }}  state=present update_cache=yes allow_unauthenticated=yes
   tags:
     - nginx
     - nginx-install
